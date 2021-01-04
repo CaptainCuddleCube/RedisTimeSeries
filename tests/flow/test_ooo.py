@@ -9,7 +9,7 @@ from test_helper_classes import _get_ts_info
 def test_ooo(self):
     with Env().getConnection() as r:
         quantity = 50001
-        type_list = ['', 'UNCOMPRESSED']
+        type_list = ['UNCOMPRESSED','']
         for chunk_type in type_list:
             r.execute_command('ts.create', 'no_ooo', chunk_type, 'CHUNK_SIZE', 100, 'DUPLICATE_POLICY', 'BLOCK')
             r.execute_command('ts.create', 'ooo', chunk_type, 'CHUNK_SIZE', 100, 'DUPLICATE_POLICY', 'LAST')

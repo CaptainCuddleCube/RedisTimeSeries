@@ -50,7 +50,6 @@ static void ensureAddSample(CompressedChunk *chunk, Sample *sample) {
         chunk->size += CHUNK_RESIZE_STEP;
         chunk->data = (u_int64_t *)realloc(chunk->data, chunk->size * sizeof(char));
         memset((char *)chunk->data + oldsize, 0, CHUNK_RESIZE_STEP);
-        // printf("Chunk extended to %lu \n", chunk->size);
         res = Compressed_AddSample(chunk, sample);
         assert(res == CR_OK);
     }

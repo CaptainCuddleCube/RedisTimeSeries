@@ -189,6 +189,18 @@ size_t SeriesGetChunksSize(Series *series) {
     return size;
 }
 
+char *SeriesGetCStringLabelValue(const Series *series, const char *labelKey) {
+    char *result = NULL;
+    for (int i = 0; i < series->labelsCount; i++) {
+        const char *currLabel = RedisModule_StringPtrLen(series->labels[i].key, NULL);
+        if (strcmp(currLabel, labelKey) == 0) {
+            result = strdup(RedisModule_StringPtrLen(series->labels[i].value, NULL));
+            break;
+        }
+    }
+    return result;
+}
+
 size_t SeriesMemUsage(const void *value) {
     Series *series = (Series *)value;
 
@@ -218,6 +230,44 @@ size_t SeriesGetNumSamples(const Series *series) {
         numSamples = series->totalSamples;
     }
     return numSamples;
+}
+
+int MultiSerieReduce(Series *dest, Series *source, MultiSeriesReduceOp op) {
+    Sample sample;
+    long long skipped;
+    timestamp_t start_ts = getFirstValidTimestamp(source, &skipped);
+    timestamp_t end_ts = source->lastTimestamp;
+    SeriesIterator iterator = SeriesQuery(source, start_ts, end_ts, false);
+    DuplicatePolicy dp = DP_INVALID;
+    switch (op) {
+        case MultiSeriesReduceOp_Max:
+            dp = DP_MAX;
+            break;
+        case MultiSeriesReduceOp_Min:
+            dp = DP_MIN;
+            break;
+        case MultiSeriesReduceOp_Sum:
+            dp = DP_SUM;
+            break;
+    }
+    while (SeriesIteratorGetNext(&iterator, &sample) == CR_OK) {
+        const int rv = SeriesUpsertSample(dest, sample.timestamp, sample.value, dp);
+        assert(rv == CR_OK);
+    }
+    SeriesIteratorClose(&iterator);
+    return 1;
+}
+
+bool SeriesGetValueAtTimestamp(Series *series, timestamp_t ts, double *value) {
+    bool result = false;
+    Sample sample;
+    SeriesIterator iterator = SeriesQuery(series, ts, ts, false);
+    if (SeriesIteratorGetNext(&iterator, &sample) == CR_OK) {
+        assert(ts == sample.timestamp);
+        *value = sample.value;
+        result = true;
+    }
+    return result;
 }
 
 static void upsertCompaction(Series *series, UpsertCtx *uCtx) {
